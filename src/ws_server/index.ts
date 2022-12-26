@@ -1,5 +1,6 @@
 import { Server, WebSocket } from "ws";
-import { Commands, controller } from "./controller";
+import { controller } from "./controller";
+import { Commands } from "./types";
 
 export const configureSocket = (socket: Server<WebSocket>) => {
   socket.on("connection", (socket) => {

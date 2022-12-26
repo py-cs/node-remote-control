@@ -11,23 +11,9 @@ import {
   screen,
 } from "@nut-tree/nut-js";
 import { readFile } from "fs/promises";
+import { Commands, Controller } from "./types";
 
-export const enum Commands {
-  MOUSE_UP = "mouse_up",
-  MOUSE_DOWN = "mouse_down",
-  MOUSE_LEFT = "mouse_left",
-  MOUSE_RIGHT = "mouse_right",
-  MOUSE_POSITION = "mouse_position",
-  DRAW_CIRCLE = "draw_circle",
-  DRAW_SQUARE = "draw_square",
-  DRAW_RECTANGLE = "draw_rectangle",
-  PRNT_SCRN = "prnt_scrn",
-}
-
-export const controller: Record<
-  Commands,
-  (args: number[]) => Promise<void | string>
-> = {
+export const controller: Controller = {
   [Commands.MOUSE_UP]: async ([distance]: number[]) => {
     await mouse.move(up(distance));
   },
