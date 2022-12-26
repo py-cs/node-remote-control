@@ -9,9 +9,14 @@ const DEFAULT_WS_PORT = 8080;
 const HTTP_PORT = Number(process.env.HTTP_PORT) || DEFAULT_HTTP_PORT;
 const WS_PORT = Number(process.env.WS_PORT) || DEFAULT_WS_PORT;
 
-console.log(`Start static http server on the ${HTTP_PORT} port!`);
+console.log(`Static http server started on http://localhost:${HTTP_PORT}`);
 httpServer.listen(HTTP_PORT);
 
-const socket = new WebSocketServer({ port: WS_PORT });
-console.log(`Start websocket server on the ${WS_PORT} port!`);
-configureSocket(socket);
+const wss = new WebSocketServer({ port: WS_PORT });
+console.log(`Websocket server started on port ${WS_PORT}`);
+configureSocket(wss);
+
+process.on("SIGINT", () => {
+  console.log("Process terminated, closing websocket server.");
+  wss.close();
+});
