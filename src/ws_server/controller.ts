@@ -7,30 +7,37 @@ import {
   Button,
   Point,
   straightTo,
-  Region,
   screen,
 } from "@nut-tree/nut-js";
-import { readFile } from "fs/promises";
+import Jimp from "jimp";
+import internal from "stream";
 import { Commands, Controller } from "./types";
+import { getScreenshotRegion } from "./getScreenshotRegion";
 
 export const controller: Controller = {
   [Commands.MOUSE_UP]: async ([distance]: number[]) => {
     await mouse.move(up(distance));
   },
+
   [Commands.MOUSE_DOWN]: async ([distance]: number[]) => {
     await mouse.move(down(distance));
   },
+
   [Commands.MOUSE_LEFT]: async ([distance]: number[]) => {
     await mouse.move(left(distance));
   },
+
   [Commands.MOUSE_RIGHT]: async ([distance]: number[]) => {
     await mouse.move(right(distance));
   },
-  [Commands.MOUSE_POSITION]: async ([]: number[]) => {
+
+  [Commands.MOUSE_POSITION]: async ([]: number[], duplex) => {
     const { x, y } = await mouse.getPosition();
     const response = `${Commands.MOUSE_POSITION} ${x},${y}`;
-    return response;
+    console.log(`Sending response: ${response}`);
+    duplex.write(response);
   },
+
   [Commands.DRAW_CIRCLE]: async ([radius]: number[]) => {
     const { x, y } = await mouse.getPosition();
     const centerPoint = new Point(x, y + radius);
@@ -47,6 +54,7 @@ export const controller: Controller = {
     }
     await mouse.releaseButton(Button.LEFT);
   },
+
   [Commands.DRAW_SQUARE]: async ([size]: number[]) => {
     await mouse.pressButton(Button.LEFT);
     await mouse.move(right(size));
@@ -55,6 +63,7 @@ export const controller: Controller = {
     await mouse.move(up(size));
     await mouse.releaseButton(Button.LEFT);
   },
+
   [Commands.DRAW_RECTANGLE]: async ([width, height]: number[]) => {
     await mouse.pressButton(Button.LEFT);
     await mouse.move(right(width));
@@ -63,13 +72,28 @@ export const controller: Controller = {
     await mouse.move(up(height));
     await mouse.releaseButton(Button.LEFT);
   },
-  [Commands.PRNT_SCRN]: async ([]: number[]) => {
-    const { x, y } = await mouse.getPosition();
-    const region = new Region(x - 100, y - 100, 200, 200);
+
+  [Commands.PRNT_SCRN]: async ([]: number[], duplex: internal.Duplex) => {
+    const region = await getScreenshotRegion();
+
     screen.highlight(region);
-    const pngFile = await screen.captureRegion("output.png", region);
-    const bufferArray = await readFile(pngFile);
-    const response = `prnt_scrn ${bufferArray.toString("base64")}`;
-    return response;
+    const image = await screen.grabRegion(region);
+    const { data, width, height } = await image.toRGB();
+
+    new Jimp(
+      {
+        data,
+        width,
+        height,
+      },
+      async (_, image) => {
+        const pngBuffer = await image.getBufferAsync(Jimp.MIME_PNG);
+        const response = `${Commands.PRNT_SCRN} ${pngBuffer.toString(
+          "base64"
+        )}`;
+        console.log(`Sending response: ${response}`);
+        duplex.write(response);
+      }
+    );
   },
 };

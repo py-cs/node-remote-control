@@ -1,4 +1,6 @@
-export const enum Commands {
+import internal from "stream";
+
+export enum Commands {
   MOUSE_UP = "mouse_up",
   MOUSE_DOWN = "mouse_down",
   MOUSE_LEFT = "mouse_left",
@@ -10,6 +12,13 @@ export const enum Commands {
   PRNT_SCRN = "prnt_scrn",
 }
 
-type CommandHandler = (args: number[]) => Promise<void | string>;
+type CommandHandler = (
+  args: number[],
+  duplex: internal.Duplex
+) => Promise<void>;
 
 export type Controller = Record<Commands, CommandHandler>;
+
+export function isValidComand(cmd: any): cmd is Commands {
+  return Object.values(Commands).includes(cmd);
+}

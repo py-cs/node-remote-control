@@ -16,7 +16,9 @@ const wss = new WebSocketServer({ port: WS_PORT });
 console.log(`Websocket server started on port ${WS_PORT}`);
 configureSocket(wss);
 
-process.on("SIGINT", () => {
-  console.log("Process terminated, closing websocket server.");
-  wss.close();
+["exit", "SIGINT"].forEach((event) => {
+  process.on(event, () => {
+    console.log("Process terminated, shutting down websocket server...");
+    wss.close();
+  });
 });

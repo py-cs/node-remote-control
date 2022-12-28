@@ -1,31 +1,43 @@
-import { Server, WebSocket } from "ws";
+import internal from "stream";
+import { createWebSocketStream, Server, WebSocket } from "ws";
 import { controller } from "./controller";
-import { Commands } from "./types";
+import { isValidComand } from "./types";
 
 export const configureSocket = (wss: Server<WebSocket>) => {
-  wss.on("connection", (socket) => {
+  wss.on("connection", (client) => {
     console.log("Connection established");
 
-    socket.on("message", async (message) => {
+    const duplex = createWebSocketStream(client, {
+      encoding: "utf-8",
+      decodeStrings: false,
+    });
+
+    duplex.on("error", console.error);
+
+    duplex.on("readable", () => {
+      let data;
+      let message = "";
+
+      while ((data = duplex.read()) !== null) {
+        message += data;
+      }
+
       console.log(`Received message: ${message}`);
 
       const [cmd, ...rest] = message.toString().split(" ");
       const args = rest.map(Number);
 
-      const response = await controller[cmd as Commands](args);
-
-      if (response) {
-        console.log(`Sending response: ${response}`);
-        socket.send(response);
+      if (isValidComand(cmd)) {
+        controller[cmd](args, duplex);
+      } else {
+        // throw Error(`Command is not supported (${cmd})`);
       }
     });
 
-    socket.on("close", () => {
+    client.on("close", () => {
       console.log("Connection closed by client");
     });
 
-    socket.on("error", (error) => {
-      console.error(error);
-    });
+    client.on("error", console.error);
   });
 };
