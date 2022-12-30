@@ -1,6 +1,7 @@
 import { httpServer } from "./http_server/index";
 import { WebSocketServer } from "ws";
 import { configureSocket } from "./ws_server";
+
 import "dotenv/config";
 
 const DEFAULT_HTTP_PORT = 8181;
@@ -16,9 +17,8 @@ const wss = new WebSocketServer({ port: WS_PORT });
 console.log(`Websocket server started on port ${WS_PORT}`);
 configureSocket(wss);
 
-["exit", "SIGINT"].forEach((event) => {
-  process.on(event, () => {
-    console.log("Process terminated, shutting down websocket server...");
-    wss.close();
-  });
+process.on("SIGINT", () => {
+  console.log("Process terminated, shutting down websocket server");
+  wss.clients.forEach((socket) => socket.close());
+  wss.close();
 });

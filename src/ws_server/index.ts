@@ -1,20 +1,20 @@
-import internal from "stream";
 import { createWebSocketStream, Server, WebSocket } from "ws";
 import { controller } from "./controller";
-import { isValidComand } from "./types";
+import { isValidCommand } from "./typeGuards";
 
 export const configureSocket = (wss: Server<WebSocket>) => {
-  wss.on("connection", (client) => {
-    console.log("Connection established");
+  wss.on("connection", (client, req) => {
+    const { remotePort } = req.socket;
+    console.log(
+      `New connection established (port: ${remotePort}). Clients connected: ${wss.clients.size}`
+    );
 
     const duplex = createWebSocketStream(client, {
       encoding: "utf-8",
       decodeStrings: false,
     });
 
-    duplex.on("error", console.error);
-
-    duplex.on("readable", () => {
+    duplex.on("readable", async () => {
       let data;
       let message = "";
 
@@ -22,22 +22,29 @@ export const configureSocket = (wss: Server<WebSocket>) => {
         message += data;
       }
 
-      console.log(`Received message: ${message}`);
+      if (message.trim()) {
+        console.log(`Received message: ${message}`);
+      }
 
       const [cmd, ...rest] = message.toString().split(" ");
       const args = rest.map(Number);
 
-      if (isValidComand(cmd)) {
-        controller[cmd](args, duplex);
-      } else {
-        // throw Error(`Command is not supported (${cmd})`);
+      if (isValidCommand(cmd)) {
+        const result = await controller[cmd](args, duplex);
+        const response = cmd + (result ? ` ${result}` : "");
+        console.log(`Sending response: ${response}`);
+        duplex.write(response);
       }
     });
 
-    client.on("close", () => {
-      console.log("Connection closed by client");
-    });
+    duplex.on("error", console.error);
 
     client.on("error", console.error);
+
+    client.on("close", () => {
+      console.log(
+        `Connection closed by client. Clients left: ${wss.clients.size}`
+      );
+    });
   });
 };

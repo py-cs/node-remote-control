@@ -10,42 +10,41 @@ import {
   screen,
 } from "@nut-tree/nut-js";
 import Jimp from "jimp";
-import internal from "stream";
 import { Commands, Controller } from "./types";
 import { getScreenshotRegion } from "./getScreenshotRegion";
 
+const CIRCLE_FRAGMENTS = 100;
+
 export const controller: Controller = {
   [Commands.MOUSE_UP]: async ([distance]: number[]) => {
-    await mouse.move(up(distance));
+    mouse.move(up(distance));
   },
 
   [Commands.MOUSE_DOWN]: async ([distance]: number[]) => {
-    await mouse.move(down(distance));
+    mouse.move(down(distance));
   },
 
   [Commands.MOUSE_LEFT]: async ([distance]: number[]) => {
-    await mouse.move(left(distance));
+    mouse.move(left(distance));
   },
 
   [Commands.MOUSE_RIGHT]: async ([distance]: number[]) => {
-    await mouse.move(right(distance));
+    mouse.move(right(distance));
   },
 
-  [Commands.MOUSE_POSITION]: async ([]: number[], duplex) => {
+  [Commands.MOUSE_POSITION]: async () => {
     const { x, y } = await mouse.getPosition();
-    const response = `${Commands.MOUSE_POSITION} ${x},${y}`;
-    console.log(`Sending response: ${response}`);
-    duplex.write(response);
+    const response = `${x},${y}`;
+    return response;
   },
 
   [Commands.DRAW_CIRCLE]: async ([radius]: number[]) => {
     const { x, y } = await mouse.getPosition();
     const centerPoint = new Point(x, y + radius);
-    const steps = 50;
     let currentAngle = 0;
     await mouse.pressButton(Button.LEFT);
-    for (let i = 0; i < steps; i++) {
-      currentAngle += (Math.PI * 2) / steps;
+    for (let i = 0; i < CIRCLE_FRAGMENTS; i++) {
+      currentAngle += (Math.PI * 2) / CIRCLE_FRAGMENTS;
       const nextPoint = new Point(
         centerPoint.x + radius * Math.sin(currentAngle),
         centerPoint.y - radius * Math.cos(currentAngle)
@@ -73,27 +72,20 @@ export const controller: Controller = {
     await mouse.releaseButton(Button.LEFT);
   },
 
-  [Commands.PRNT_SCRN]: async ([]: number[], duplex: internal.Duplex) => {
+  [Commands.PRNT_SCRN]: async () => {
     const region = await getScreenshotRegion();
 
     screen.highlight(region);
     const image = await screen.grabRegion(region);
     const { data, width, height } = await image.toRGB();
 
-    new Jimp(
-      {
-        data,
-        width,
-        height,
-      },
-      async (_, image) => {
-        const pngBuffer = await image.getBufferAsync(Jimp.MIME_PNG);
-        const response = `${Commands.PRNT_SCRN} ${pngBuffer.toString(
-          "base64"
-        )}`;
-        console.log(`Sending response: ${response}`);
-        duplex.write(response);
-      }
-    );
+    const base64image = await new Promise<string>((resolve) => {
+      new Jimp({ data, width, height }, async (_, image) => {
+        const img = await image.getBase64Async(Jimp.MIME_PNG);
+        resolve(img.slice(img.indexOf(",") + 1));
+      });
+    });
+
+    return base64image;
   },
 };

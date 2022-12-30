@@ -1,4 +1,4 @@
-import internal from "stream";
+import { Duplex } from "stream";
 
 export enum Commands {
   MOUSE_UP = "mouse_up",
@@ -14,11 +14,7 @@ export enum Commands {
 
 type CommandHandler = (
   args: number[],
-  duplex: internal.Duplex
-) => Promise<void>;
+  duplex: Duplex
+) => Promise<void | string>;
 
 export type Controller = Record<Commands, CommandHandler>;
-
-export function isValidComand(cmd: any): cmd is Commands {
-  return Object.values(Commands).includes(cmd);
-}
