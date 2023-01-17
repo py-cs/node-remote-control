@@ -31,7 +31,7 @@ export const configureSocket = (wss: Server<WebSocket>) => {
 
       if (isValidCommand(cmd)) {
         const result = await controller[cmd](args, duplex);
-        const response = cmd + (result ? ` ${result}` : "");
+        const response = result ? [cmd, result].join(" ") : message;
         console.log(`Sending response: ${response}`);
         duplex.write(response);
       }
